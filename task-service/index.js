@@ -1,52 +1,90 @@
-const express = require('express')
-const mongoose = require('mongoose')
-const bodyParser = require('body-parser')
-const amqp = require('amqplib')
+require('dotenv').config();
+const express = require('express');
+const mongoose = require('mongoose');
+const bodyParser = require('body-parser');
+const amqp = require('amqplib');
+const jwt = require('jsonwebtoken');
+const { StatusCodes } = require('http-status-codes');
+const axios = require('axios');
 
-const app = express()
-const port = 3002
+const app = express();
+const PORT = process.env.PORT || 3002;
 
-app.use(bodyParser.json())
+// Middleware
+app.use(bodyParser.json());
 
-mongoose.connect('mongodb://mongo:27017/tasks').then(() => {
-  console.log('Connected to MongoDB')
-}).catch(err => {
-  console.error('Failed to connect to MongoDB', err)
-});
+// MongoDB Connection
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://mongo:27017/tasks')
+  .then(() => console.log('Task Service: Connected to MongoDB'))
+  .catch(err => console.error('Task Service: MongoDB connection error:', err));
 
+// Task Schema
 const taskSchema = new mongoose.Schema({
-  title: String,
+  title: { type: String, required: true },
   description: String,
-  userId: String,
-  createdAt: { type: Date, default: Date.now }
+  userId: { type: String, required: true },
+  status: { 
+    type: String, 
+    enum: ['pending', 'in_progress', 'completed', 'archived'],
+    default: 'pending'
+  },
+  dueDate: Date,
+  priority: {
+    type: String,
+    enum: ['low', 'medium', 'high'],
+    default: 'medium'
+  },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
 });
 
 const Task = mongoose.model('Task', taskSchema);
 
-
+// RabbitMQ connection
 let channel, connection;
-// RabbitMQ connection setup would go here (omitted for brevity)
+const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://rabbitmq';
+const TASK_CREATED_QUEUE = 'task_created';
+const TASK_UPDATED_QUEUE = 'task_updated';
 
-async function connectRabbitMQWithRetry(
-  retries = 5,
-  delay = 3000
-) {
-  // RabbitMQ connection logic would go here (omitted for brevity)
+// Authentication Middleware
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  
+  if (!token) {
+    return res.status(StatusCodes.UNAUTHORIZED).json({ 
+      message: 'No token provided' 
+    });
+  }
 
+  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+    if (err) {
+      return res.status(StatusCodes.FORBIDDEN).json({ 
+        message: 'Invalid or expired token' 
+      });
+    }
+    req.user = user;
+    next();
+  });
+};
+
+// Connect to RabbitMQ with retry
+async function connectRabbitMQWithRetry(retries = 5, delay = 3000) {
   while (retries) {
     try {
-      // Attempt to connect to RabbitMQ
-      // If successful, break the loop
-
-      connection = await amqp.connect('amqp://rabbitmq_node');
+      connection = await amqp.connect(RABBITMQ_URL);
       channel = await connection.createChannel();
-      await channel.assertQueue('task_created');
-      console.log('Connected to RabbitMQ');
+      
+      // Assert queues
+      await channel.assertQueue(TASK_CREATED_QUEUE, { durable: true });
+      await channel.assertQueue(TASK_UPDATED_QUEUE, { durable: true });
+      
+      console.log('Task Service: Connected to RabbitMQ');
       return;
-
     } catch (error) {
       console.error('RabbitMQ connection failed, retrying...', error.message);
       retries -= 1;
+      
       if (retries === 0) {
         console.error('Max retries reached. Could not connect to RabbitMQ.');
         process.exit(1);

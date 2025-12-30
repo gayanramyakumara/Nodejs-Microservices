@@ -9,35 +9,78 @@ services:
 
   rabbitmq:
     image: rabbitmq:3-management
-    container_name: rabbitmq_node
+    container_name: rabbitmq
     ports:
       - "5672:5672"
       - "15672:15672"
 
+  auth-service:
+    build: ./auth-service
+    container_name: auth-service
+    env_file: .env
+    ports:
+      - "3004:3004"
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - MONGODB_URI=mongodb://mongo:27017/auth
+      - JWT_SECRET=${JWT_SECRET:-your_secure_jwt_secret_key_here}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-1d}
+      - PORT=3004
+      - USER_SERVICE_URL=http://user-service:3001
+    depends_on:
+      - mongo
+    restart: unless-stopped
+
   user-service:
     build: ./user-service
     container_name: user-service
+    env_file: .env
     ports:
       - "3001:3001"
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - MONGODB_URI=mongodb://mongo:27017/users
+      - JWT_SECRET=${JWT_SECRET:-your_secure_jwt_secret_key_here}
+      - PORT=3001
     depends_on:
       - mongo
+      - auth-service
+    restart: unless-stopped
+
   task-service:
     build: ./task-service
     container_name: task-service
+    env_file: .env
     ports:
       - "3002:3002"
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - MONGODB_URI=mongodb://mongo:27017/tasks
+      - JWT_SECRET=${JWT_SECRET:-your_secure_jwt_secret_key_here}
+      - RABBITMQ_URL=amqp://rabbitmq
+      - AUTH_SERVICE_URL=http://localhost:3004
+      - PORT=3002
     depends_on:
       - mongo
       - rabbitmq
-    
+      - auth-service
+    restart: unless-stopped
+
   notification-service:
     build: ./notification-service
     container_name: notification-service
+    env_file: .env
     ports:
       - "3003:3003"
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - MONGODB_URI=mongodb://mongo:27017/notifications
+      - RABBITMQ_URL=amqp://rabbitmq
+      - PORT=3003
     depends_on:
       - mongo
       - rabbitmq
+    restart: unless-stopped
 
 volumes:
   mongo-data:

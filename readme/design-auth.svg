@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="650" viewBox="0 0 1200 650">
+  <defs>
+    <style>
+      .box { fill: #efe7ff; stroke: #5b3fa6; stroke-width: 2; rx: 10; ry: 10; }
+      .infra { fill: #e8fff1; stroke: #1f7a3a; stroke-width: 2; rx: 10; ry: 10; }
+      .db { fill: #e8f1ff; stroke: #1f4f9c; stroke-width: 2; }
+      .title { font: 700 18px Arial, Helvetica, sans-serif; fill: #111; }
+      .label { font: 14px Arial, Helvetica, sans-serif; fill: #111; }
+      .small { font: 12px Arial, Helvetica, sans-serif; fill: #111; }
+      .arrow { stroke: #333; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+      .dashed { stroke-dasharray: 6 6; }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#333" />
+    </marker>
+  </defs>
+
+  <!-- Client -->
+  <rect class="infra" x="40" y="260" width="160" height="90" />
+  <text class="title" x="120" y="300" text-anchor="middle">Client</text>
+  <text class="label" x="120" y="325" text-anchor="middle">Postman / UI</text>
+
+  <!-- Services -->
+  <text class="title" x="520" y="60" text-anchor="middle">Services</text>
+
+  <rect class="box" x="290" y="100" width="220" height="90" />
+  <text class="title" x="400" y="135" text-anchor="middle">auth-service</text>
+  <text class="label" x="400" y="160" text-anchor="middle">:3004</text>
+
+  <rect class="box" x="560" y="100" width="220" height="90" />
+  <text class="title" x="670" y="135" text-anchor="middle">user-service</text>
+  <text class="label" x="670" y="160" text-anchor="middle">:3001</text>
+
+  <rect class="box" x="290" y="240" width="220" height="90" />
+  <text class="title" x="400" y="275" text-anchor="middle">task-service</text>
+  <text class="label" x="400" y="300" text-anchor="middle">:3002</text>
+
+  <rect class="box" x="560" y="240" width="220" height="90" />
+  <text class="title" x="670" y="275" text-anchor="middle">notification-service</text>
+  <text class="label" x="670" y="300" text-anchor="middle">:3003</text>
+
+  <!-- Infrastructure -->
+  <text class="title" x="950" y="60" text-anchor="middle">Infrastructure</text>
+
+  <rect class="infra" x="860" y="110" width="260" height="110" />
+  <text class="title" x="990" y="145" text-anchor="middle">MongoDB</text>
+  <text class="label" x="990" y="170" text-anchor="middle">:27017</text>
+  <text class="small" x="990" y="195" text-anchor="middle">auth / users / tasks / notifications</text>
+
+  <rect class="infra" x="860" y="260" width="260" height="110" />
+  <text class="title" x="990" y="295" text-anchor="middle">RabbitMQ</text>
+  <text class="label" x="990" y="320" text-anchor="middle">:5672 (mgmt :15672)</text>
+
+  <!-- Arrows: client to services -->
+  <path class="arrow" d="M200 285 L290 145" />
+  <path class="arrow" d="M200 305 L560 145" />
+  <path class="arrow" d="M200 325 L290 285" />
+
+  <!-- Inter-service call: auth -> user (register creates profile) -->
+  <path class="arrow dashed" d="M510 145 L560 145" />
+  <text class="small" x="535" y="130" text-anchor="middle">create profile</text>
+
+  <!-- Services to MongoDB -->
+  <path class="arrow" d="M510 145 L860 145" />
+  <path class="arrow" d="M780 145 L860 145" />
+  <path class="arrow" d="M510 285 L860 165" />
+  <path class="arrow" d="M780 285 L860 185" />
+
+  <!-- Task -> RabbitMQ -> Notification -->
+  <path class="arrow" d="M510 285 L860 315" />
+  <path class="arrow" d="M860 315 L780 285" />
+  <text class="small" x="700" y="355" text-anchor="middle">task_created / task_updated</text>
+
+  <!-- Footer legend -->
+  <text class="small" x="40" y="620">Legend: Solid arrows = direct HTTP/DB/MQ communication, dashed arrow = internal service-to-service call (Auth → User).</text>
+</svg>

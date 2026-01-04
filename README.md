@@ -35,11 +35,66 @@ Services are containerized with Docker Compose, and can also be run locally.
 - `task-service/` — task CRUD + RabbitMQ publisher
 - `notification-service/` — RabbitMQ consumer (notifications)
 - `docker-compose.yml` — orchestration for all services, MongoDB and RabbitMQ
-- `readme/design.png` — architecture diagram
+- `readme/design-auth.svg` — architecture diagram
 
 ## Architecture
 
-![Architecture](readme/design.png)
+![Architecture](readme/design-auth.svg)
+
+### Mermaid source (editable)
+
+```mermaid
+flowchart LR
+  client[Client / Postman]
+
+  subgraph svc[Services]
+    auth[auth-service\n:3004]
+    users[user-service\n:3001]
+    tasks[task-service\n:3002]
+    notif[notification-service\n:3003]
+  end
+
+  subgraph infra[Infrastructure]
+    mq[(RabbitMQ\n:5672 / :15672)]
+    mongo[(MongoDB\n:27017)]
+  end
+
+  subgraph dbs[Logical Databases (same Mongo instance)]
+    authdb[(auth DB\nusers)]
+    usersdb[(users DB\nuserprofiles)]
+    tasksdb[(tasks DB\ntasks)]
+    notifdb[(notifications DB)]
+  end
+
+  client --> auth
+  client --> users
+  client --> tasks
+
+  auth --> users
+
+  auth --> mongo
+  users --> mongo
+  tasks --> mongo
+  notif --> mongo
+
+  mongo --- authdb
+  mongo --- usersdb
+  mongo --- tasksdb
+  mongo --- notifdb
+
+  tasks --> mq
+  mq --> notif
+```
+
+### Exporting the diagram to PNG
+
+- **VS Code**:
+  - Install an extension that supports Mermaid rendering/export (for example, "Markdown Preview Mermaid Support" or a Mermaid exporter).
+  - Export the Mermaid block as an image.
+- **GitHub**:
+  - GitHub renders Mermaid in Markdown; you can take a screenshot or use a Mermaid export tool.
+
+If you want, tell me whether you prefer **PNG** or **SVG**, and I’ll generate a text-based diagram file (SVG) under `readme/` that you can commit and render anywhere.
 
 ## Service Ports
 
